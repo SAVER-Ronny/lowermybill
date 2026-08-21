@@ -16,11 +16,13 @@ class BillRequest(BaseModel):
     bill_text: str
 
 PREVIEW_PROMPT = """You are an expert at negotiating bills down. 
-Given a bill, write 2 punchy sentences:
-1. Estimate how much they could save per year (be specific, e.g. "$240-480/year")
-2. Tease the exact strategy without revealing it ("The key is asking for X department and saying exactly...")
+Given a bill description, write 2 punchy sentences:
+1. Estimate realistic savings - typically 20-40% of their current bill per year. 
+   NEVER suggest saving more than they currently pay.
+   If they pay $100/month, max savings is $480/year (40%).
+2. Tease the exact strategy without revealing it.
 End with: "Unlock the full word-for-word script below ↓"
-Be confident and specific."""
+Be specific with dollar amounts. Be realistic."""
 
 FULL_SCRIPT_PROMPT = """You are a world-class bill negotiation expert.
 Generate a complete word-for-word script. Use this exact format:
