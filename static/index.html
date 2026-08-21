@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lower My Bill — AI Negotiation Scripts</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0a0a0a;
+    color: #f0f0f0;
+    min-height: 100vh;
+  }
+
+  .hero {
+    text-align: center;
+    padding: 80px 20px 60px;
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  .badge {
+    display: inline-block;
+    background: rgba(0, 200, 100, 0.15);
+    color: #00c864;
+    border: 1px solid rgba(0, 200, 100, 0.3);
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    margin-bottom: 28px;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 20px;
+  }
+
+  h1 span {
+    color: #00c864;
+  }
+
+  .subtitle {
+    font-size: 18px;
+    color: #888;
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  .bills-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 48px;
+  }
+
+  .bill-tag {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    color: #ccc;
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 13px;
+  }
+
+  .form-section {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 0 20px 80px;
+  }
+
+  textarea {
+    width: 100%;
+    background: #141414;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    color: #f0f0f0;
+    font-size: 15px;
+    line-height: 1.6;
+    padding: 18px;
+    resize: vertical;
+    min-height: 140px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  textarea:focus {
+    border-color: #00c864;
+  }
+
+  textarea::placeholder { color: #444; }
+
+  .btn {
+    width: 100%;
+    padding: 18px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    margin-top: 12px;
+    transition: all 0.2s;
+    letter-spacing: 0.01em;
+  }
+
+  .btn-primary {
+    background: #00c864;
+    color: #000;
+  }
+
+  .btn-primary:hover { background: #00e070; transform: translateY(-1px); }
+  .btn-primary:disabled { background: #1a4a2a; color: #444; cursor: not-allowed; transform: none; }
+
+  .btn-pay {
+    background: #fff;
+    color: #000;
+    margin-top: 16px;
+  }
+
+  .btn-pay:hover { background: #f0f0f0; transform: translateY(-1px); }
+
+  .preview-box {
+    background: #141414;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    display: none;
+  }
+
+  .preview-box.visible { display: block; }
+
+  .preview-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #00c864;
+    margin-bottom: 10px;
+  }
+
+  .preview-text {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #ccc;
+  }
+
+  .script-box {
+    background: #0f1f16;
+    border: 1px solid rgba(0, 200, 100, 0.2);
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 20px;
+    display: none;
+    white-space: pre-wrap;
+    font-size: 15px;
+    line-height: 1.8;
+    color: #d0f0d8;
+  }
+
+  .script-box.visible { display: block; }
+
+  .script-header {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #00c864;
+    margin-bottom: 16px;
+    font-weight: 700;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid #1a1a1a;
+    margin: 60px auto;
+    max-width: 620px;
+  }
+
+  .social-proof {
+    text-align: center;
+    padding: 0 20px 80px;
+  }
+
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    flex-wrap: wrap;
+  }
+
+  .stat-num {
+    font-size: 36px;
+    font-weight: 800;
+    color: #00c864;
+    letter-spacing: -0.02em;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(0,0,0,0.2);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-msg {
+    color: #ff4444;
+    font-size: 14px;
+    margin-top: 10px;
+    display: none;
+  }
+
+  .copy-btn {
+    background: transparent;
+    border: 1px solid rgba(0, 200, 100, 0.3);
+    color: #00c864;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 16px;
+    transition: all 0.2s;
+  }
+
+  .copy-btn:hover { background: rgba(0, 200, 100, 0.1); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="badge">✦ AI-powered negotiation</div>
+  <h1>You're <span>overpaying.</span><br>Let's fix that.</h1>
+  <p class="subtitle">Get a word-for-word script to lower any bill.<br>Free preview. Full script for $7.</p>
+  <div class="bills-list">
+    <span class="bill-tag">📱 Phone</span>
+    <span class="bill-tag">🌐 Internet</span>
+    <span class="bill-tag">🛡️ Insurance</span>
+    <span class="bill-tag">💳 Credit card APR</span>
+    <span class="bill-tag">⚡ Utilities</span>
+    <span class="bill-tag">📺 Streaming</span>
+    <span class="bill-tag">🏠 Rent</span>
+  </div>
+</div>
+
+<div class="form-section">
+  <textarea id="billInput" placeholder="Describe your bill. Example: 'I pay $180/month for Comcast internet. Been a customer for 3 years. No contract. They keep raising the price.'" rows="5"></textarea>
+  
+  <div class="error-msg" id="errorMsg"></div>
+
+  <button class="btn btn-primary" id="previewBtn" onclick="getPreview()">
+    See how much you could save →
+  </button>
+
+  <div class="preview-box" id="previewBox">
+    <div class="preview-label">💡 Free preview</div>
+    <div class="preview-text" id="previewText"></div>
+    <button class="btn btn-pay" id="payBtn" onclick="checkout()">
+      Get the full script — $7
+    </button>
+  </div>
+
+  <div class="script-box" id="scriptBox">
+    <div class="script-header">✅ Your negotiation script</div>
+    <div id="scriptText"></div>
+    <button class="copy-btn" onclick="copyScript()">Copy script</button>
+  </div>
+</div>
+
+<hr class="divider">
+
+<div class="social-proof">
+  <div class="stats">
+    <div>
+      <div class="stat-num">$340</div>
+      <div class="stat-label">avg saved per year</div>
+    </div>
+    <div>
+      <div class="stat-num">11 min</div>
+      <div class="stat-label">avg call length</div>
+    </div>
+    <div>
+      <div class="stat-num">73%</div>
+      <div class="stat-label">success rate</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let billText = '';
+
+async function getPreview() {
+  billText = document.getElementById('billInput').value.trim();
+  const btn = document.getElementById('previewBtn');
+  const errorMsg = document.getElementById('errorMsg');
+  
+  errorMsg.style.display = 'none';
+  
+  if (billText.length < 20) {
+    errorMsg.textContent = 'Please tell us more about your bill.';
+    errorMsg.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Analyzing your bill...';
+
+  try {
+    const res = await fetch('/api/preview', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({bill_text: billText})
+    });
+    const data = await res.json();
+    
+    document.getElementById('previewText').textContent = data.preview;
+    document.getElementById('previewBox').classList.add('visible');
+    btn.style.display = 'none';
+  } catch(e) {
+    errorMsg.textContent = 'Something went wrong. Try again.';
+    errorMsg.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = 'See how much you could save →';
+  }
+}
+
+async function checkout() {
+  const btn = document.getElementById('payBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Opening checkout...';
+
+  try {
+    const res = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({bill_text: billText})
+    });
+    const data = await res.json();
+    window.location.href = data.url;
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = 'Get the full script — $7';
+  }
+}
+
+async function copyScript() {
+  const text = document.getElementById('scriptText').textContent;
+  await navigator.clipboard.writeText(text);
+  document.querySelector('.copy-btn').textContent = 'Copied!';
+  setTimeout(() => document.querySelector('.copy-btn').textContent = 'Copy script', 2000);
+}
+
+// Handle success redirect
+const params = new URLSearchParams(window.location.search);
+const sessionId = params.get('session_id');
+
+if (sessionId) {
+  document.querySelector('.hero').style.display = 'none';
+  document.querySelector('.social-proof').style.display = 'none';
+  document.querySelector('hr').style.display = 'none';
+
+  const formSection = document.querySelector('.form-section');
+  formSection.innerHTML = `
+    <div style="text-align:center;padding:60px 0 20px">
+      <div style="font-size:48px;margin-bottom:16px">✅</div>
+      <h2 style="font-size:24px;font-weight:700;margin-bottom:8px">Payment confirmed</h2>
+      <p style="color:#888">Loading your script...</p>
+    </div>
+    <div class="script-box visible" id="scriptBox">
+      <div class="script-header">Your negotiation script</div>
+      <div id="scriptText" style="color:#888">Loading...</div>
+    </div>
+  `;
+
+  fetch(`/api/script?session_id=${sessionId}`)
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('scriptText').textContent = data.script;
+      document.getElementById('scriptText').style.color = '#d0f0d8';
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-btn';
+      copyBtn.textContent = 'Copy script';
+      copyBtn.onclick = copyScript;
+      document.getElementById('scriptBox').appendChild(copyBtn);
+    })
+    .catch(() => {
+      document.getElementById('scriptText').textContent = 'Error loading script. Email support@lowermybill.ai with your receipt.';
+    });
+}
+</script>
+
+</body>
+</html>
