@@ -122,3 +122,4 @@ async def get_script(session_id: str):
 app.mount("/static", StaticFiles(directory="static"), name="static")
 # force redeploy
 
+# autodeploy
