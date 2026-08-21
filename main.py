@@ -118,3 +118,4 @@ async def get_script(session_id: str):
     return {"script": response.choices[0].message.content}
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+# force redeploy
