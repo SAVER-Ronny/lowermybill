@@ -1,28 +1,35 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from openai import OpenAI
 import stripe
 import os
 
+
 app = FastAPI()
 
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
-DOMAIN = os.environ.get("DOMAIN", "http://localhost:8000")
+
+DOMAIN = os.environ.get("DOMAIN", "https://lowermybill.tech")
+CANONICAL_HOST = "lowermybill.tech"
+RAILWAY_HOST = "lowermybill-production.up.railway.app"
+
 
 class BillRequest(BaseModel):
     bill_text: str
 
-PREVIEW_PROMPT = """You are an expert at negotiating bills down. 
+
+PREVIEW_PROMPT = """You are an expert at negotiating bills down.
 Given a bill description, write 2 punchy sentences:
-1. Estimate realistic savings - typically 20-40% of their current bill per year. 
+1. Estimate realistic savings - typically 20-40% of their current bill per year.
    NEVER suggest saving more than they currently pay.
    If they pay $100/month, max savings is $480/year (40%).
 2. Tease the exact strategy without revealing it.
 End with: "Unlock the full word-for-word script below ↓"
 Be specific with dollar amounts. Be realistic."""
+
 
 FULL_SCRIPT_PROMPT = """You are a world-class bill negotiation expert.
 Generate a complete word-for-word script. Use this exact format:
@@ -35,7 +42,7 @@ Generate a complete word-for-word script. Use this exact format:
 
 💪 IF THEY SAY NO — USE THESE 3 COMEBACKS
 1. [First rebuttal]
-2. [Second rebuttal] 
+2. [Second rebuttal]
 3. [Third rebuttal - mention cancelling]
 
 🏆 CLOSING LINE
@@ -52,74 +59,162 @@ Generate a complete word-for-word script. Use this exact format:
 
 Be extremely specific. Use real numbers. Sound natural, not scripted."""
 
+
+@app.middleware("http")
+async def canonical_host_redirect(request: Request, call_next):
+    host = request.headers.get("host", "").split(":")[0].lower()
+
+    if host == RAILWAY_HOST:
+        target = f"https://{CANONICAL_HOST}{request.url.path}"
+
+        if request.url.query:
+            target = f"{target}?{request.url.query}"
+
+        return RedirectResponse(url=target, status_code=301)
+
+    response = await call_next(request)
+
+    if request.url.path in ("/", "/success"):
+        response.headers["Link"] = (
+            f"<https://{DOMAIN}/>; rel=\"canonical\""
+        )
+
+    return response
+
+
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    with open("static/index.html") as f:
-        return f.read()
+    with open("static/index.html", "r", encoding="utf-8") as file:
+        return file.read()
+
 
 @app.get("/success", response_class=HTMLResponse)
 async def success_page():
-    with open("static/index.html") as f:
-        return f.read()
+    with open("static/index.html", "r", encoding="utf-8") as file:
+        return file.read()
+
+
+@app.get("/robots.txt")
+async def robots_txt():
+    content = """User-agent: *
+Allow: /
+
+Sitemap: https://lowermybill.tech/sitemap.xml
+"""
+    return Response(content=content, media_type="text/plain")
+
+
+@app.get("/sitemap.xml")
+async def sitemap_xml():
+    content = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+        <loc>https://lowermybill.tech/</loc>
+    </url>
+</urlset>
+"""
+    return Response(content=content, media_type="application/xml")
+
 
 @app.post("/api/preview")
 async def preview(request: BillRequest):
     if len(request.bill_text.strip()) < 20:
-        raise HTTPException(status_code=400, detail="Tell us more about your bill")
+        raise HTTPException(
+            status_code=400,
+            detail="Tell us more about your bill"
+        )
+
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": PREVIEW_PROMPT},
-            {"role": "user", "content": f"My bill: {request.bill_text}"}
+            {
+                "role": "user",
+                "content": f"My bill: {request.bill_text}"
+            }
         ],
         max_tokens=120
     )
-    return {"preview": response.choices[0].message.content}
+
+    return {
+        "preview": response.choices[0].message.content
+    }
+
 
 @app.post("/api/checkout")
 async def checkout(request: BillRequest):
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
-        line_items=[{
-            "price_data": {
-                "currency": "usd",
-                "product_data": {
-                    "name": "Bill Negotiation Script",
-                    "description": "Word-for-word script to lower your bill today"
+        line_items=[
+            {
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {
+                        "name": "Bill Negotiation Script",
+                        "description": (
+                            "Word-for-word script to lower your bill today"
+                        )
+                    },
+                    "unit_amount": 700,
                 },
-                "unit_amount": 700,
-            },
-            "quantity": 1,
-        }],
+                "quantity": 1,
+            }
+        ],
         mode="payment",
-        success_url=f"{DOMAIN}/success?session_id={{CHECKOUT_SESSION_ID}}",
+        success_url=(
+            f"{DOMAIN}/success"
+            "?session_id={CHECKOUT_SESSION_ID}"
+        ),
         cancel_url=f"{DOMAIN}/",
-        metadata={"bill_text": request.bill_text[:1000]}
+        metadata={
+            "bill_text": request.bill_text[:1000]
+        }
     )
+
     return {"url": session.url}
+
 
 @app.get("/api/script")
 async def get_script(session_id: str):
     try:
         session = stripe.checkout.Session.retrieve(session_id)
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid session")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid session"
+        )
 
     if session.payment_status != "paid":
-        raise HTTPException(status_code=402, detail="Payment required")
+        raise HTTPException(
+            status_code=402,
+            detail="Payment required"
+        )
 
     bill_text = session.metadata.get("bill_text", "")
+
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": FULL_SCRIPT_PROMPT},
-            {"role": "user", "content": f"My bill: {bill_text}"}
+            {
+                "role": "user",
+                "content": f"My bill: {bill_text}"
+            }
         ],
         max_tokens=700
     )
-    return {"script": response.choices[0].message.content}
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+    return {
+        "script": response.choices[0].message.content
+    }
+
+
+app.mount(
+    "/static",
+    StaticFiles(directory="static"),
+    name="static"
+)
+
+
 # force redeploy
-
 # autodeploy
